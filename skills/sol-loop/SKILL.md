@@ -52,10 +52,36 @@ only if exposed. Use `delegate_task` every round (`role: "review"`,
 `childThreadId` is storage, not the next target. Do not use
 `t3_thread_send`, `create_threads`, or `t3_thread_launch` for review.
 
-If T3 tools are not listed, try one direct capability call. Outside T3, use
-a native Sol subagent and keep its ID. In Claude Code, use a custom subagent
-only if it is set up to run Sol. If no route runs Sol, report the blocker. Do
-not substitute a model.
+If T3 tools are not listed, try one direct capability call. Outside T3, if
+`HERDR_ENV=1`, run Sol as a Codex agent in a Herdr pane (see "Sol in Herdr").
+Otherwise use a native Sol subagent and keep its ID. In Claude Code, use a
+custom subagent only if it is set up to run Sol. If no route runs Sol, report
+the blocker. Do not substitute a model.
+
+### Sol in Herdr
+
+Follow the `herdr` skill's rules for pane geometry and IDs. Split a sibling
+pane without taking focus, read `result.pane.pane_id`, and start Codex in it
+with a read-only sandbox. Use Codex's default model unless the user named a
+version; then add `-m <id>` after `read-only`.
+
+```bash
+herdr pane split --current --direction right --no-focus
+herdr agent start sol --kind codex --pane <pane_id> -- -s read-only
+```
+
+Send each round's brief with `agent prompt`. It returns when Sol stops. Then
+read the transcript:
+
+```bash
+herdr agent prompt sol "<brief>" --wait --until idle --until done --timeout 1800000
+herdr agent read sol --source recent-unwrapped --lines 200
+```
+
+The agent keeps its history across rounds, so later rounds need only the
+ledger and the change since last round. A `blocked` status means Sol needs
+input; read the pane before answering. Close the pane when the loop ends:
+`herdr pane close <pane_id>`.
 
 Do not edit scoped files while review runs. Wait for the notice. Do not
 poll or start a second reviewer. Timeout, error, or no reply is not
@@ -95,7 +121,8 @@ review grew the diff, cut first. Do not agree just to end the loop.
 
 Start one only if budget remains and a blocker or should is open, behavior code
 changed, or approval does not cover the current behavior diff. Use a fresh
-`delegate_task` in T3, or follow up the saved native ID. Send the round 1 brief,
+`delegate_task` in T3, `agent prompt sol` in Herdr, or follow up the saved
+native ID. Send the round 1 brief,
 the ledger (`fixed:` / `disagree:` / `declined:` + evidence), the same base
 diff, and the change since last round. Tell Sol: open ids and changed code only.
 Mark each old id `resolved` or `still open: <reason>`.

@@ -12,9 +12,11 @@ those. Otherwise pick the latest flagship model from each provider, for
 example Claude Opus, GPT Sol, and Gemini Pro.
 
 In T3 Code, use `orchestrator_capabilities` to resolve the models, then
-`delegate_task` to start one delegate per model in parallel. Elsewhere, use
-the harness's subagent tools. If you cannot reach three providers, or a named
-member is unavailable, report it instead of substituting.
+`delegate_task` to start one delegate per model in parallel. In Herdr
+(`HERDR_ENV=1`), start one agent per provider in its own pane (see "Council in
+Herdr"). Elsewhere, use the harness's subagent tools. If you cannot reach
+three providers, or a named member is unavailable, report it instead of
+substituting.
 
 Give each delegate the request and relevant context. For review or feedback,
 keep their work read-only. Collect their responses and summarize the useful
@@ -49,3 +51,26 @@ outcome.
 
 Do not let repeated reviews result in scope creep. It is your job to fight to
 keep scope limited.
+
+## Council in Herdr
+
+Follow the `herdr` skill's rules for pane geometry and IDs. For each delegate,
+split a pane without taking focus, read `result.pane.pane_id`, and start that
+provider's CLI in it: `claude`, `codex`, or `gemini`. Pass a model only when
+the user named one. Keep review delegates read-only where the CLI allows it.
+
+```bash
+herdr pane split --current --direction right --no-focus
+herdr agent start council-codex --kind codex --pane <pane_id> -- -s read-only
+```
+
+Prompt every delegate first, then wait on each, so they work in parallel:
+
+```bash
+herdr agent prompt council-codex "<request and context>"
+herdr agent wait council-codex --until idle --until done --timeout 1800000
+herdr agent read council-codex --source recent-unwrapped --lines 200
+```
+
+Each agent keeps its history, so send later rounds as follow-up prompts to the
+same agents. Close the panes you created when the council is done.
